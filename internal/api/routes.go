@@ -2,7 +2,9 @@ package api
 
 import "net/http"
 
-func middleware(next http.Handler) http.Handler {
+type ApiConfig struct{}
+
+func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Origin")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -13,4 +15,10 @@ func middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func NewRouter(cfg *ApiConfig) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/api", http.StripPrefix("/api", http.FileServer(http.Dir("."))))
+	return mux
 }
