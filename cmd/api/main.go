@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Altyn/projectOne/internal"
 	"Altyn/projectOne/internal/api"
 	"log"
 	"net/http"
@@ -12,7 +13,7 @@ func main() {
 
 	server := http.Server{
 		Addr:    ":8082",
-		Handler: api.Middleware(api.NewRouter(cfg)),
+		Handler: internal.Middleware(internal.NewRouter(cfg)),
 	}
 
 	log.Println("The base if the server is created")

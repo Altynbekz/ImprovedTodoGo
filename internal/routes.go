@@ -1,8 +1,10 @@
-package api
+package internal
 
-import "net/http"
-
-type ApiConfig struct{}
+import (
+	"Altyn/projectOne/internal/api"
+	"Altyn/projectOne/internal/todos"
+	"net/http"
+)
 
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -17,8 +19,10 @@ func Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func NewRouter(cfg *ApiConfig) *http.ServeMux {
+func NewRouter(cfg *api.ApiConfig) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/api", http.StripPrefix("/api", http.FileServer(http.Dir("."))))
+
+	mux.Handle("/api/todo", todos.CreateTODO(cfg))
 	return mux
 }
