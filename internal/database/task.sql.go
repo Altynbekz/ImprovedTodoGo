@@ -8,29 +8,38 @@ package database
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 const createTask = `-- name: CreateTask :one
-insert into tasks(id, created_at, updated_at, task_name,task_desc,deadline)
+insert into tasks(id, created_at, updated_at, task_name,task_desc,deadline, user_id)
 values(
     gen_random_uuid(),
     now(),
     now(),
     $1,
     $2,
-    $3
+    $3,
+    $4
     )
-returning id, created_at, updated_at, task_name, task_desc, deadline
+returning id, created_at, updated_at, task_name, task_desc, deadline, user_id
 `
 
 type CreateTaskParams struct {
 	TaskName string
 	TaskDesc string
 	Deadline sql.NullTime
+	UserID   uuid.UUID
 }
 
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, error) {
-	row := q.db.QueryRowContext(ctx, createTask, arg.TaskName, arg.TaskDesc, arg.Deadline)
+	row := q.db.QueryRowContext(ctx, createTask,
+		arg.TaskName,
+		arg.TaskDesc,
+		arg.Deadline,
+		arg.UserID,
+	)
 	var i Task
 	err := row.Scan(
 		&i.ID,
@@ -39,6 +48,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.TaskName,
 		&i.TaskDesc,
 		&i.Deadline,
+		&i.UserID,
 	)
 	return i, err
 }

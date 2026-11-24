@@ -24,5 +24,6 @@ func NewRouter(cfg *api.ApiConfig) *http.ServeMux {
 	mux.Handle("/api", http.StripPrefix("/api", http.FileServer(http.Dir("."))))
 
 	mux.Handle("/api/todo", todos.CreateTODO(cfg))
+	mux.Handle("/api/user", todos.CreateUser(cfg.Db))
 	return mux
 }

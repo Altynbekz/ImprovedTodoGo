@@ -18,13 +18,14 @@ type Task struct {
 	TaskName  string
 	TaskDesc  string
 	Deadline  sql.NullTime
+	UserID    uuid.UUID
 }
 
 type User struct {
 	ID        uuid.UUID
 	Useraname string
-	Firstname string
-	Lastname  string
+	FirstName string
+	LastName  string
 	Email     string
 	Password  string
 	CreatedAt time.Time
