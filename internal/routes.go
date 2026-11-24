@@ -3,6 +3,7 @@ package internal
 import (
 	"Altyn/projectOne/internal/api"
 	"Altyn/projectOne/internal/todos"
+	"log"
 	"net/http"
 )
 
@@ -24,6 +25,10 @@ func NewRouter(cfg *api.ApiConfig) *http.ServeMux {
 	mux.Handle("/api", http.StripPrefix("/api", http.FileServer(http.Dir("."))))
 
 	mux.Handle("/api/todo", todos.CreateTODO(cfg))
+	log.Println("The /api/todo is ready to use")
+
 	mux.Handle("/api/user", todos.CreateUser(cfg.Db))
+	log.Println("The /api/user create endpoint is ready to use")
+
 	return mux
 }

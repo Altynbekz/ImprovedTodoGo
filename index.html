@@ -3,9 +3,546 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta name="theme-color" content="#0018F9">
+    <title>Boolean Sequence</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --blue: #0018F9;
+            --white: #FFFFFF;
+            --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+            --sans: Inter, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            border-radius: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            min-width: 320px;
+            min-height: 100%;
+            margin: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+            background: var(--white);
+            color: var(--blue);
+            font-family: var(--sans);
+        }
+
+        button {
+            min-height: 36px;
+            border: 1px solid var(--blue);
+            border-radius: 0;
+            background: var(--white);
+            color: var(--blue);
+            cursor: pointer;
+            font: 11px var(--mono);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        button:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 3px;
+        }
+
+        #field {
+            position: fixed;
+            inset: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .topbar,
+        .bottombar {
+            position: fixed;
+            z-index: 2;
+            right: 24px;
+            left: 24px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .topbar {
+            top: 24px;
+        }
+
+        .bottombar {
+            bottom: 24px;
+            align-items: flex-end;
+        }
+
+        .brand,
+        .brand-caption,
+        .mode-controls,
+        .pause-button,
+        .callout,
+        .instruction,
+        .scroll-prompt,
+        .footer-copy {
+            pointer-events: auto;
+        }
+
+        .brand {
+            display: inline-flex;
+            gap: 7px;
+            padding: 8px 14px;
+            background: var(--white);
+            color: var(--blue);
+            font-size: 15px;
+            line-height: 1;
+            text-decoration: none;
+        }
+
+        .brand strong {
+            font-weight: 800;
+        }
+
+        .brand-caption {
+            display: flex;
+            gap: 4px;
+            margin-top: 5px;
+            font: 10px/1.2 var(--mono);
+            letter-spacing: 0.15em;
+        }
+
+        .brand-caption span {
+            padding: 3px 4px;
+            background: var(--white);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mode-controls {
+            display: flex;
+        }
+
+        .mode-controls button {
+            min-width: 52px;
+            margin-left: -1px;
+            padding: 0 11px;
+        }
+
+        .mode-controls button:first-child {
+            margin-left: 0;
+        }
+
+        .mode-controls button[aria-pressed="true"] {
+            position: relative;
+            z-index: 1;
+            background: var(--blue);
+            color: var(--white);
+        }
+
+        .pause-button {
+            padding: 0 12px;
+        }
+
+        .callout-wrap {
+            position: fixed;
+            z-index: 1;
+            top: 22%;
+            right: 24px;
+            width: min(280px, calc(100vw - 48px));
+        }
+
+        .callout {
+            margin: 0;
+            padding: 16px 20px;
+            background: var(--white);
+            color: var(--blue);
+            font-size: 15px;
+            line-height: 1.35;
+        }
+
+        .instruction {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 5px;
+            background: var(--white);
+            color: var(--blue);
+            font: 10px/1.4 var(--mono);
+            letter-spacing: 0.08em;
+        }
+
+        .hero {
+            position: fixed;
+            z-index: 1;
+            bottom: 19%;
+            left: 24px;
+            width: min(84vw, 1180px);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            font-size: clamp(4.5rem, 13vw, 12rem);
+            font-weight: 900;
+            letter-spacing: -0.07em;
+            line-height: 0.82;
+        }
+
+        .hero-line {
+            display: block;
+            padding: 0.035em 0.11em 0.09em 0.06em;
+            background: var(--white);
+            color: var(--blue);
+            white-space: nowrap;
+        }
+
+        .hero-line + .hero-line {
+            margin-top: 0.07em;
+            margin-left: 0.52em;
+        }
+
+        .edge-indicator {
+            position: fixed;
+            z-index: 2;
+            top: 50%;
+            right: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(-50%);
+        }
+
+        .progress-squares {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .progress-squares span {
+            width: 6px;
+            height: 6px;
+            border: 1px solid var(--blue);
+            background: var(--white);
+        }
+
+        .progress-squares span:first-child {
+            background: var(--blue);
+        }
+
+        .edge-label {
+            padding: 3px;
+            background: var(--white);
+            color: var(--blue);
+            font: 9px var(--mono);
+            letter-spacing: 0.12em;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+        }
+
+        .scroll-prompt,
+        .footer-copy {
+            background: var(--white);
+            color: var(--blue);
+            font: 11px var(--mono);
+        }
+
+        .scroll-prompt {
+            padding: 8px 12px;
+            text-transform: lowercase;
+        }
+
+        .footer-copy {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 12px;
+            white-space: nowrap;
+        }
+
+        .footer-glyph {
+            display: inline-flex;
+            width: 18px;
+            height: 18px;
+            align-items: center;
+            justify-content: center;
+            background: var(--blue);
+            color: var(--white);
+        }
+
+        @media (max-width: 767px) {
+            .topbar,
+            .bottombar {
+                right: 12px;
+                left: 12px;
+            }
+
+            .topbar {
+                top: 12px;
+            }
+
+            .bottombar {
+                bottom: 12px;
+                gap: 8px;
+            }
+
+            .brand {
+                gap: 5px;
+                padding: 8px;
+                font-size: 13px;
+            }
+
+            .brand-caption {
+                flex-direction: column;
+                align-items: flex-start;
+                font-size: 8px;
+            }
+
+            .controls {
+                gap: 6px;
+            }
+
+            .mode-controls button {
+                min-width: 38px;
+                padding: 0 5px;
+                font-size: 9px;
+            }
+
+            .pause-button {
+                padding: 0 7px;
+                font-size: 9px;
+            }
+
+            .callout-wrap {
+                top: 20%;
+                right: 12px;
+                width: min(230px, calc(100vw - 24px));
+            }
+
+            .callout {
+                padding: 12px 14px;
+                font-size: 13px;
+            }
+
+            .instruction {
+                max-width: 220px;
+                font-size: 8px;
+            }
+
+            .hero {
+                bottom: 25%;
+                left: 12px;
+                width: calc(100vw - 36px);
+                font-size: clamp(3.2rem, 13vw, 9rem);
+                letter-spacing: -0.06em;
+            }
+
+            .edge-indicator {
+                right: 8px;
+                gap: 7px;
+            }
+
+            .edge-label {
+                font-size: 7px;
+            }
+
+            .scroll-prompt {
+                padding: 8px;
+            }
+
+            .footer-copy {
+                gap: 4px;
+                padding: 6px;
+                font-size: 9px;
+            }
+
+            .footer-glyph {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1> i am back</h1>
+    <canvas id="field" aria-hidden="true"></canvas>
+
+    <header class="topbar">
+        <div>
+            <a class="brand" href="#" aria-label="boolean Sequence">
+                <span>boolean</span><strong>Sequence</strong>
+            </a>
+            <div class="brand-caption">
+                <span>NICEUNDERGROUND</span>
+                <span>GENERATIVE VISUALS</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="mode-controls" role="group" aria-label="Grid symbol mode">
+                <button type="button" data-mode="signs" aria-pressed="false">+/-</button>
+                <button type="button" data-mode="binary" aria-pressed="false">0/1</button>
+                <button type="button" data-mode="arrows" aria-pressed="true">&gt;/&lt;</button>
+            </div>
+            <button type="button" class="pause-button" aria-pressed="false">Ⅱ pause</button>
+        </div>
+    </header>
+
+    <aside class="callout-wrap">
+        <p class="callout">A modern yin and yang. Two values, nothing else.</p>
+        <span class="instruction">&gt; CLICK THE FIELD TO SEND A WAVE THROUGH IT</span>
+    </aside>
+
+    <main class="hero" aria-label="i am back">
+        <span class="hero-line">i am</span>
+        <span class="hero-line">back</span>
+    </main>
+
+    <aside class="edge-indicator" aria-label="Section 1 of 3">
+        <div class="progress-squares" aria-hidden="true">
+            <span></span><span></span><span></span>
+        </div>
+        <span class="edge-label">01 / 03</span>
+    </aside>
+
+    <footer class="bottombar">
+        <span class="scroll-prompt">scroll</span>
+        <span class="footer-copy">
+            contrasts that swap places,
+            <span class="footer-glyph">&gt;</span>
+            never merge
+            <span class="footer-glyph">&lt;</span>
+        </span>
+    </footer>
+
+    <script>
+        (() => {
+            const canvas = document.getElementById("field");
+            const context = canvas.getContext("2d");
+            const modeButtons = [...document.querySelectorAll("[data-mode]")];
+            const pauseButton = document.querySelector(".pause-button");
+            const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+            const cellSize = 28;
+            const waves = [];
+            let width = 0;
+            let height = 0;
+            let pixelRatio = 1;
+            let elapsed = 0;
+            let previousFrame = 0;
+            let paused = reducedMotion.matches;
+            let mode = "arrows";
+
+            function resize() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                pixelRatio = window.devicePixelRatio || 1;
+                canvas.width = Math.round(width * pixelRatio);
+                canvas.height = Math.round(height * pixelRatio);
+                context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            }
+
+            function stateAt(x, y, time) {
+                const noise =
+                    Math.sin(x * 0.018 + Math.sin(y * 0.012 + time * 0.22) * 1.8) +
+                    Math.cos(y * 0.019 - time * 0.18 + Math.sin(x * 0.01) * 1.5) +
+                    Math.sin((x + y) * 0.009 + time * 0.12);
+                let state = noise > 0;
+
+                for (const wave of waves) {
+                    const distance = Math.hypot(x - wave.x, y - wave.y);
+                    const radius = (time - wave.startedAt) * 260;
+                    if (Math.abs(distance - radius) < 34) {
+                        state = !state;
+                    }
+                }
+                return state;
+            }
+
+            function draw(time) {
+                const columns = Math.ceil(width / cellSize);
+                const rows = Math.ceil(height / cellSize);
+                const symbols = mode === "signs"
+                    ? ["-", "+"]
+                    : mode === "binary"
+                        ? ["0", "1"]
+                        : ["<", ">"];
+
+                context.clearRect(0, 0, width, height);
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                context.font = "12px SFMono-Regular, Consolas, monospace";
+
+                for (let row = 0; row < rows; row++) {
+                    for (let column = 0; column < columns; column++) {
+                        const x = column * cellSize;
+                        const y = row * cellSize;
+                        const state = stateAt(x + cellSize / 2, y + cellSize / 2, time);
+                        context.fillStyle = state ? "#0018F9" : "#FFFFFF";
+                        context.fillRect(x, y, cellSize, cellSize);
+                        context.fillStyle = state ? "#FFFFFF" : "#0018F9";
+                        context.fillText(symbols[Number(state)], x + cellSize / 2, y + cellSize / 2);
+                    }
+                }
+            }
+
+            function frame(timestamp) {
+                const delta = previousFrame === 0 ? 0 : (timestamp - previousFrame) / 1000;
+                previousFrame = timestamp;
+                if (!paused) {
+                    elapsed += delta;
+                    for (let index = waves.length - 1; index >= 0; index--) {
+                        if (elapsed - waves[index].startedAt > 8) {
+                            waves.splice(index, 1);
+                        }
+                    }
+                }
+                draw(elapsed);
+                window.requestAnimationFrame(frame);
+            }
+
+            modeButtons.forEach((button) => {
+                button.addEventListener("click", () => {
+                    mode = button.dataset.mode;
+                    modeButtons.forEach((item) => {
+                        item.setAttribute("aria-pressed", String(item === button));
+                    });
+                });
+            });
+
+            pauseButton.addEventListener("click", () => {
+                paused = !paused;
+                pauseButton.setAttribute("aria-pressed", String(paused));
+                pauseButton.textContent = paused ? "▶ play" : "Ⅱ pause";
+            });
+
+            document.addEventListener("click", (event) => {
+                if (event.target.closest("button, a")) {
+                    return;
+                }
+                waves.push({
+                    x: event.clientX,
+                    y: event.clientY,
+                    startedAt: elapsed,
+                });
+            });
+
+            window.addEventListener("resize", resize);
+            resize();
+            pauseButton.setAttribute("aria-pressed", String(paused));
+            pauseButton.textContent = paused ? "▶ play" : "Ⅱ pause";
+            window.requestAnimationFrame(frame);
+        })();
+    </script>
 </body>
 </html>

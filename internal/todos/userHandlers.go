@@ -1,28 +1,18 @@
 package todos
 
 import (
+	"Altyn/projectOne/internal/api"
 	"Altyn/projectOne/internal/auth"
 	"Altyn/projectOne/internal/database"
 	"Altyn/projectOne/internal/utils"
-	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
+	"time"
+	"uuid"
 )
-
-type UserRequest struct {
-	FirstName string `json:"first_name"`
-	Lastname  string `json:"last_name"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-}
-
-type UserStore interface {
-	FindUserByEmail(context.Context, string) (bool, error)
-	FindUserByUsername(context.Context, string) (bool, error)
-	CreateUser(context.Context, database.CreateUserParams) (database.User, error)
-}
 
 func CreateUser(db UserStore) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,5 +92,67 @@ func CreateUser(db UserStore) http.Handler {
 		}
 
 		utils.JsonResponse(w, http.StatusCreated, "Successfully created", res)
+	})
+}
+
+func LoginUserHandler(cfg *api.ApiConfig) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		loginUserRequest := &LoginUser{}
+
+		if err := json.NewDecoder(r.Body).Decode(loginUserRequest); err != nil {
+			utils.JsonResponseError(w, http.StatusBadRequest, "Couldn't decode the request")
+			return
+		}
+
+		loginUserRequest.Email = strings.TrimSpace(loginUserRequest.Email)
+		if !strings.Contains(loginUserRequest.Email, "@") || strings.Count(loginUserRequest.Email, "@") > 1 {
+			utils.JsonResponseError(w, http.StatusBadRequest, "Invalid email")
+			return
+		}
+
+		if len(strings.TrimSpace(loginUserRequest.Password)) < 8 {
+			utils.JsonResponseError(w, http.StatusBadRequest, "The password is invalid")
+			return
+		}
+
+		user, err := cfg.Db.GetUserByEmail(ctx, loginUserRequest.Email)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				utils.JsonResponseError(w, http.StatusUnauthorized, "Wrong password or email")
+				return
+			}
+			utils.JsonResponseError(w, http.StatusInternalServerError, "Couldn't execute the function")
+			return
+		}
+
+		ok, err := auth.CheckPassword(loginUserRequest.Password, user.Password)
+		if err != nil {
+			utils.JsonResponseError(w, http.StatusInternalServerError, "Couldn't execute the function")
+			return
+		}
+
+		if !ok {
+			utils.JsonResponseError(w, http.StatusUnauthorized, "Wrong password or email")
+			return
+		}
+
+		token, err := auth.MakeJwt(uuid.UUID(user.ID), cfg.SecretKey, time.Hour)
+		if err != nil {
+			utils.JsonResponseError(w, http.StatusInternalServerError, "Couldn't create a jwt token")
+			return
+		}
+
+		res := UserResponse{
+			FirstName: user.FirstName,
+			Lastname:  user.LastName,
+			Username:  user.Useraname,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Token:     token,
+		}
+
+		utils.JsonResponse(w, http.StatusOK, "User logged in successfully", res)
 	})
 }

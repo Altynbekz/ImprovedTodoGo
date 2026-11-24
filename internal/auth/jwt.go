@@ -12,7 +12,7 @@ import (
 
 func MakeJwt(id uuid.UUID, secretKey string, expiresAt time.Duration) (string, error) {
 	createdAt := time.Now()
-	token := jwt.NewWithClaims(jwt.SigningMethodES256,
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.RegisteredClaims{
 			Issuer:    "todo-access",
 			IssuedAt:  jwt.NewNumericDate(createdAt),
@@ -27,7 +27,7 @@ func ValidateJwt(tokenInput, secretToken string) (uuid.UUID, error) {
 		tokenInput,
 		jwt.RegisteredClaims{},
 		func(*jwt.Token) (any, error) { return []byte(secretToken), nil },
-		jwt.WithValidMethods([]string{jwt.SigningMethodES256.Alg()}),
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
