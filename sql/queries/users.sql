@@ -11,6 +11,10 @@ values(
     now()
 )
 returning *;
+
+-- name: GetUsernameById :one
+select useraname from users where id= $1;
+
 -- name: FindUsesrById :one
 select exists(
     select 1 from users where id = $1
@@ -26,5 +30,4 @@ select exists(
 
 -- name: GetUserByEmail :one
 select * from users where email = $1;
-
 

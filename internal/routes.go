@@ -24,11 +24,15 @@ func NewRouter(cfg *api.ApiConfig) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/api", http.StripPrefix("/api", http.FileServer(http.Dir("."))))
 
-	mux.Handle("/api/todo", todos.CreateTODO(cfg))
-	log.Println("The /api/todo is ready to use")
+	mux.Handle("POST /api/todo", todos.CreateTODO(cfg))
+	mux.Handle("GET /api/todo", todos.GetAllTodo(cfg))
+	log.Println("The /api/todo endpoints are ready to use")
 
 	mux.Handle("/api/user", todos.CreateUser(cfg.Db))
 	log.Println("The /api/user create endpoint is ready to use")
+
+	mux.Handle("/api/login", todos.LoginUserHandler(cfg))
+	log.Println("Login endpoint is ready to use")
 
 	return mux
 }

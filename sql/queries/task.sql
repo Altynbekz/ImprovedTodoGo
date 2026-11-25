@@ -10,3 +10,6 @@ values(
     $4
     )
 returning *;
+
+-- name: GetTaskByUserId :many
+select * from tasks where user_id = $1;

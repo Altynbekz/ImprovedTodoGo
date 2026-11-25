@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 	"uuid"
@@ -83,4 +84,57 @@ func TestJwtValidation(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetBearer(t *testing.T) {
+	tests := []struct {
+		name      string
+		header    http.Header
+		wantToken string
+		wantErr   bool
+	}{
+		{
+			name:      "valid bearer header",
+			header:    http.Header{"Authorization": []string{"Bearer my-jwt-token"}},
+			wantToken: "my-jwt-token",
+		},
+		{
+			name:      "case-insensitive bearer scheme",
+			header:    http.Header{"Authorization": []string{"bearer my-jwt-token"}},
+			wantToken: "my-jwt-token",
+		},
+		{
+			name:    "missing authorization header",
+			header:  http.Header{},
+			wantErr: true,
+		},
+		{
+			name:    "wrong scheme",
+			header:  http.Header{"Authorization": []string{"Basic abc123"}},
+			wantErr: true,
+		},
+		{
+			name:    "missing token",
+			header:  http.Header{"Authorization": []string{"Bearer"}},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := GetBearer(tc.header)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got token %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.wantToken {
+				t.Fatalf("got token %q, want %q", got, tc.wantToken)
+			}
+		})
+	}
 }

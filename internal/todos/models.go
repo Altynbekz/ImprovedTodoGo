@@ -4,12 +4,24 @@ import (
 	"Altyn/projectOne/internal/database"
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type TaskRequest struct {
 	TaskName string    `json:"task_name"`
 	TaskDesc string    `json:"task_desc"`
 	Deadline time.Time `json:"deadline"`
+}
+
+type TaskResponse struct {
+	ID        uuid.UUID  `json:"id"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	TaskName  string     `json:"task_name"`
+	TaskDesc  string     `json:"task_desc"`
+	Deadline  *time.Time `json:"deadline,omitempty"`
+	UserID    uuid.UUID  `json:"user_id"`
 }
 
 type UserRequest struct {

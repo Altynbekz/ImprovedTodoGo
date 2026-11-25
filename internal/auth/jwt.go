@@ -50,9 +50,9 @@ func ValidateJwt(tokenInput, secretToken string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func GetBearer(r http.Request) (string, error) {
-	part := strings.Fields(r.Header.Get("Authorization"))
-	if len(part) != 2 || strings.EqualFold(part[0], "Bearer") {
+func GetBearer(r http.Header) (string, error) {
+	part := strings.Fields(r.Get("Authorization"))
+	if len(part) != 2 || !strings.EqualFold(part[0], "Bearer") {
 		return "", fmt.Errorf("The Header is invalid")
 	}
 	return part[1], nil
