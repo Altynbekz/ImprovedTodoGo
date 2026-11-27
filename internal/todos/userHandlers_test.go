@@ -128,8 +128,9 @@ func TestCreateUser(t *testing.T) {
 }
 
 type mockUserQueryResult struct {
-	user *database.User
-	err  error
+	user    *database.User
+	err     error
+	execErr error
 }
 
 var (
@@ -149,6 +150,17 @@ type mockConn struct{}
 func (c *mockConn) Prepare(string) (driver.Stmt, error) { return nil, errors.New("not implemented") }
 func (c *mockConn) Close() error                        { return nil }
 func (c *mockConn) Begin() (driver.Tx, error)           { return nil, errors.New("not implemented") }
+
+func (c *mockConn) ExecContext(_ context.Context, _ string, _ []driver.NamedValue) (driver.Result, error) {
+	mockDriverMu.Lock()
+	res := mockQueryResult
+	mockDriverMu.Unlock()
+
+	if res.execErr != nil {
+		return nil, res.execErr
+	}
+	return driver.RowsAffected(1), nil
+}
 
 func (c *mockConn) QueryContext(_ context.Context, _ string, _ []driver.NamedValue) (driver.Rows, error) {
 	mockDriverMu.Lock()
@@ -318,6 +330,227 @@ func TestLoginUserHandler(t *testing.T) {
 				if userResp.Email != testUser.Email {
 					t.Fatalf("got email %q, want %q", userResp.Email, testUser.Email)
 				}
+			}
+		})
+	}
+}
+
+type mockUserUpdate struct {
+	user           database.User
+	getErr         error
+	emailExists    bool
+	usernameExists bool
+	updateErr      error
+	updatedParams  *database.UpdateUserParams
+}
+
+func (m *mockUserUpdate) GetUserById(context.Context, uuid.UUID) (database.User, error) {
+	return m.user, m.getErr
+}
+
+func (m *mockUserUpdate) FindUserByEmail(context.Context, string) (bool, error) {
+	return m.emailExists, nil
+}
+
+func (m *mockUserUpdate) FindUserByUsername(context.Context, string) (bool, error) {
+	return m.usernameExists, nil
+}
+
+func (m *mockUserUpdate) UpdateUser(_ context.Context, arg database.UpdateUserParams) error {
+	m.updatedParams = &arg
+	return m.updateErr
+}
+
+func TestUpdateUser(t *testing.T) {
+	secret := "test-secret-key"
+	userID := uuid.New()
+	hashedOld, err := auth.HashPassword("oldpassword123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	validToken, err := auth.MakeJwt(userID, secret, time.Hour)
+	if err != nil {
+		t.Fatalf("failed to create token: %v", err)
+	}
+
+	existingUser := database.User{
+		ID:        userID,
+		Useraname: "altyn",
+		FirstName: "Altyn",
+		LastName:  "Bek",
+		Email:     "altyn@example.com",
+		Password:  hashedOld,
+	}
+
+	tests := []struct {
+		name       string
+		query      string
+		token      string
+		body       string
+		store      *mockUserUpdate
+		wantStatus int
+	}{
+		{
+			name:       "missing username query",
+			query:      "",
+			token:      validToken,
+			body:       `{}`,
+			store:      &mockUserUpdate{user: existingUser},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing bearer token",
+			query:      "?username=altyn",
+			token:      "",
+			body:       `{}`,
+			store:      &mockUserUpdate{user: existingUser},
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "username mismatch",
+			query:      "?username=other",
+			token:      validToken,
+			body:       `{}`,
+			store:      &mockUserUpdate{user: existingUser},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "conflict on new username",
+			query:      "?username=altyn",
+			token:      validToken,
+			body:       `{"username":"taken"}`,
+			store:      &mockUserUpdate{user: existingUser, usernameExists: true},
+			wantStatus: http.StatusConflict,
+		},
+		{
+			name:       "same password rejected",
+			query:      "?username=altyn",
+			token:      validToken,
+			body:       `{"password":"oldpassword123"}`,
+			store:      &mockUserUpdate{user: existingUser},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "successful partial update without password",
+			query:      "?username=altyn",
+			token:      validToken,
+			body:       `{"first_name":"NewName"}`,
+			store:      &mockUserUpdate{user: existingUser},
+			wantStatus: http.StatusNoContent,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPut, "/api/user"+tc.query, bytes.NewBufferString(tc.body))
+			if tc.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.token)
+			}
+			rec := httptest.NewRecorder()
+
+			UpdateUser(tc.store, secret).ServeHTTP(rec, req)
+
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("got status %d, want %d (body: %s)", rec.Code, tc.wantStatus, rec.Body.String())
+			}
+
+			if tc.wantStatus == http.StatusNoContent {
+				if tc.store.updatedParams == nil {
+					t.Fatal("expected UpdateUser to be called")
+				}
+				if tc.store.updatedParams.FirstName != "NewName" {
+					t.Fatalf("got first name %q, want NewName", tc.store.updatedParams.FirstName)
+				}
+				if tc.store.updatedParams.Password != hashedOld {
+					t.Fatal("expected existing password hash to be preserved when password is empty")
+				}
+			}
+		})
+	}
+}
+
+func TestDeleteUser(t *testing.T) {
+	secret := "test-secret-key"
+	userID := uuid.New()
+	validToken, err := auth.MakeJwt(userID, secret, time.Hour)
+	if err != nil {
+		t.Fatalf("failed to create token: %v", err)
+	}
+
+	existingUser := &database.User{
+		ID:        userID,
+		Useraname: "altyn",
+		FirstName: "Altyn",
+		LastName:  "Bek",
+		Email:     "altyn@example.com",
+	}
+
+	tests := []struct {
+		name       string
+		query      string
+		token      string
+		dbResult   mockUserQueryResult
+		wantStatus int
+	}{
+		{
+			name:       "missing token",
+			query:      "?username=altyn",
+			token:      "",
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "missing username",
+			query:      "",
+			token:      validToken,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "user not found",
+			query:      "?username=altyn",
+			token:      validToken,
+			dbResult:   mockUserQueryResult{user: nil},
+			wantStatus: http.StatusUnauthorized,
+		},
+		{
+			name:       "username mismatch",
+			query:      "?username=other",
+			token:      validToken,
+			dbResult:   mockUserQueryResult{user: existingUser},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name:       "delete db error",
+			query:      "?username=altyn",
+			token:      validToken,
+			dbResult:   mockUserQueryResult{user: existingUser, execErr: errors.New("delete failed")},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "successful delete",
+			query:      "?username=altyn",
+			token:      validToken,
+			dbResult:   mockUserQueryResult{user: existingUser},
+			wantStatus: http.StatusNoContent,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &api.ApiConfig{
+				Db:        newMockQueries(t, tc.dbResult),
+				SecretKey: secret,
+			}
+
+			req := httptest.NewRequest(http.MethodDelete, "/api/user"+tc.query, nil)
+			if tc.token != "" {
+				req.Header.Set("Authorization", "Bearer "+tc.token)
+			}
+			rec := httptest.NewRecorder()
+
+			DeleteUser(cfg).ServeHTTP(rec, req)
+
+			if rec.Code != tc.wantStatus {
+				t.Fatalf("got status %d, want %d (body: %s)", rec.Code, tc.wantStatus, rec.Body.String())
 			}
 		})
 	}

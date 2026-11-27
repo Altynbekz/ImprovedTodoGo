@@ -25,7 +25,7 @@ func MakeJwt(id uuid.UUID, secretKey string, expiresAt time.Duration) (string, e
 func ValidateJwt(tokenInput, secretToken string) (uuid.UUID, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenInput,
-		jwt.RegisteredClaims{},
+		&jwt.RegisteredClaims{},
 		func(*jwt.Token) (any, error) { return []byte(secretToken), nil },
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithExpirationRequired(),

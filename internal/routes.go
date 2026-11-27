@@ -23,17 +23,25 @@ func Middleware(next http.Handler) http.Handler {
 func NewRouter(cfg *api.ApiConfig) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/api", http.StripPrefix("/api", http.FileServer(http.Dir("."))))
+	log.Println(`Mapped "GET /api" -> StaticFileServer`)
 
 	mux.Handle("POST /api/todo", todos.CreateTODO(cfg))
+	log.Println(`Mapped "POST /api/todo" -> CreateTODO`)
+
 	mux.Handle("GET /api/todo", todos.GetAllTodo(cfg))
-	log.Println("The /api/todo endpoints are ready to use")
+	log.Println(`Mapped "GET /api/todo" -> GetAllTodo`)
 
 	mux.Handle("POST /api/user", todos.CreateUser(cfg.Db))
-	mux.Handle("DELETE /api/user", todos.DeleteUser(cfg))
-	log.Println("The /api/user endpoints are ready to use")
+	log.Println(`Mapped "POST /api/user" -> CreateUser`)
 
-	mux.Handle("/api/login", todos.LoginUserHandler(cfg))
-	log.Println("Login endpoint is ready to use")
+	mux.Handle("PUT /api/user", todos.UpdateUser(cfg.Db, cfg.SecretKey))
+	log.Println(`Mapped "PUT /api/user" -> UpdateUser`)
+
+	mux.Handle("DELETE /api/user", todos.DeleteUser(cfg))
+	log.Println(`Mapped "DELETE /api/user" -> DeleteUser`)
+
+	mux.Handle("POST /api/login", todos.LoginUserHandler(cfg))
+	log.Println(`Mapped "POST /api/login" -> LoginUserHandler`)
 
 	return mux
 }

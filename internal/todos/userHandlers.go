@@ -204,3 +204,131 @@ func DeleteUser(cfg *api.ApiConfig) http.Handler {
 
 	})
 }
+
+func UpdateUser(db UserUpdate, secretKey string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		username := strings.TrimSpace(r.URL.Query().Get("username"))
+		if username == "" {
+			utils.JsonResponseError(w, http.StatusBadRequest, "Bad request please enter a username")
+			return
+		}
+
+		token, err := auth.GetBearer(r.Header)
+		if err != nil {
+			utils.JsonResponseError(w, http.StatusUnauthorized, "Could not receive the token")
+			return
+		}
+
+		//validate the token
+		id, err := auth.ValidateJwt(token, secretKey)
+		if err != nil {
+			utils.JsonResponseError(w, http.StatusUnauthorized, "Could not validate the user")
+			return
+		}
+		ctx := r.Context()
+
+		//check if the id and the jwt token id match
+		user, err := db.GetUserById(ctx, id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				utils.JsonResponseError(w, http.StatusNotFound, "The user was not found")
+				return
+			}
+			utils.JsonResponseError(w, http.StatusInternalServerError, "Function malfunctioned")
+			return
+		}
+
+		if username != user.Useraname {
+			utils.JsonResponseError(w, http.StatusForbidden, "The username is invalid")
+			return
+		}
+
+		//starting the update process
+		req := &UserRequest{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			utils.JsonResponseError(w, http.StatusBadRequest, "Couldn't decode the user")
+			return
+		}
+
+		newUsername := strings.TrimSpace(req.Username)
+		if newUsername == "" {
+			newUsername = user.Useraname
+		} else if newUsername != user.Useraname {
+			exists, err := db.FindUserByUsername(ctx, newUsername)
+			if err != nil {
+				utils.JsonResponseError(w, http.StatusInternalServerError, "Could not execute the function")
+				return
+			}
+			if exists {
+				utils.JsonResponseError(w, http.StatusConflict, "The username already exists")
+				return
+			}
+		}
+
+		email := strings.TrimSpace(req.Email)
+		if email == "" {
+			email = user.Email
+		} else if email != user.Email {
+			exists, err := db.FindUserByEmail(ctx, email)
+			if err != nil {
+				utils.JsonResponseError(w, http.StatusInternalServerError, "Couldn't fetch the user")
+				return
+			}
+			if exists {
+				utils.JsonResponseError(w, http.StatusConflict, "The email already exists")
+				return
+			}
+		}
+
+		firstName := strings.TrimSpace(req.FirstName)
+		if firstName == "" {
+			firstName = user.FirstName
+		}
+
+		lastName := strings.TrimSpace(req.Lastname)
+		if lastName == "" {
+			lastName = user.LastName
+		}
+
+		passwordHash := user.Password
+		if newPassword := strings.TrimSpace(req.Password); newPassword != "" {
+			if len(newPassword) < 8 {
+				utils.JsonResponseError(w, http.StatusBadRequest, "Invalid password please make it at least 8 characters")
+				return
+			}
+
+			ok, err := auth.CheckPassword(newPassword, user.Password)
+			if err != nil {
+				utils.JsonResponseError(w, http.StatusInternalServerError, "Could not verify the user's password")
+				return
+			}
+			if ok {
+				utils.JsonResponseError(w, http.StatusBadRequest, "Please enter a new password")
+				return
+			}
+
+			passwordHash, err = auth.HashPassword(newPassword)
+			if err != nil {
+				utils.JsonResponseError(w, http.StatusInternalServerError, "Couldn't save the password")
+				return
+			}
+		}
+
+		updateParams := database.UpdateUserParams{
+			ID:        user.ID,
+			FirstName: firstName,
+			LastName:  lastName,
+			Email:     email,
+			Password:  passwordHash,
+			Useraname: newUsername,
+		}
+
+		if err := db.UpdateUser(ctx, updateParams); err != nil {
+			utils.JsonResponseError(w, http.StatusInternalServerError, "Could not update user")
+			return
+		}
+		utils.RespondWithoutBody(w, http.StatusNoContent)
+
+	})
+}
