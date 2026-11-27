@@ -48,6 +48,13 @@ type UserStore interface {
 	CreateUser(context.Context, database.CreateUserParams) (database.User, error)
 }
 
+type UserUpdate interface {
+	GetUserById(context.Context, uuid.UUID) (database.User, error)
+	FindUserByEmail(context.Context, string) (bool, error)
+	FindUserByUsername(context.Context, string) (bool, error)
+	UpdateUser(context.Context, database.UpdateUserParams) error
+}
+
 type LoginUser struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

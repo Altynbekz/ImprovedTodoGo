@@ -12,6 +12,22 @@ values(
 )
 returning *;
 
+-- name: DeleteUserById :exec
+Delete from users where id = $1;
+
+-- name: GetUserById :one
+select * from users where id = $1;
+
+-- name: UpdateUser :exec
+update users
+set useraname = $1,
+    first_name = $2,
+    last_name = $3,
+    email = $4,
+    password = $5,
+    updated_at = now()
+where id = $6;
+
 -- name: GetUsernameById :one
 select useraname from users where id= $1;
 

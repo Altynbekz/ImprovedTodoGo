@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"uuid"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func MakeJwt(id uuid.UUID, secretKey string, expiresAt time.Duration) (string, error) {
@@ -31,21 +31,21 @@ func ValidateJwt(tokenInput, secretToken string) (uuid.UUID, error) {
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
-		return uuid.Nil(), fmt.Errorf("Couldn't validate the token")
+		return uuid.Nil, fmt.Errorf("Couldn't validate the token")
 	}
 
 	if !token.Valid {
-		return uuid.Nil(), fmt.Errorf("Invalid token")
+		return uuid.Nil, fmt.Errorf("Invalid token")
 	}
 
 	userId, err := token.Claims.GetSubject()
 	if err != nil {
-		return uuid.Nil(), fmt.Errorf("Couldn't get the subject")
+		return uuid.Nil, fmt.Errorf("Couldn't get the subject")
 	}
 
 	id, err := uuid.Parse(userId)
 	if err != nil {
-		return uuid.Nil(), fmt.Errorf("Can't parse the uuid")
+		return uuid.Nil, fmt.Errorf("Can't parse the uuid")
 	}
 	return id, nil
 }

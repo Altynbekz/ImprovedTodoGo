@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 	"time"
-	"uuid"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func TestJwtFunction(t *testing.T) {

@@ -56,6 +56,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUserById = `-- name: DeleteUserById :exec
+Delete from users where id = $1
+`
+
+func (q *Queries) DeleteUserById(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteUserById, id)
+	return err
+}
+
 const findUserByEmail = `-- name: FindUserByEmail :one
 select exists(
     select 1 from users where email = $1
@@ -115,6 +124,26 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const getUserById = `-- name: GetUserById :one
+select id, useraname, first_name, last_name, email, password, created_at, updated_at from users where id = $1
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Useraname,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUsernameById = `-- name: GetUsernameById :one
 select useraname from users where id= $1
 `
@@ -124,4 +153,36 @@ func (q *Queries) GetUsernameById(ctx context.Context, id uuid.UUID) (string, er
 	var useraname string
 	err := row.Scan(&useraname)
 	return useraname, err
+}
+
+const updateUser = `-- name: UpdateUser :exec
+update users
+set useraname = $1,
+    first_name = $2,
+    last_name = $3,
+    email = $4,
+    password = $5,
+    updated_at = now()
+where id = $6
+`
+
+type UpdateUserParams struct {
+	Useraname string
+	FirstName string
+	LastName  string
+	Email     string
+	Password  string
+	ID        uuid.UUID
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.ExecContext(ctx, updateUser,
+		arg.Useraname,
+		arg.FirstName,
+		arg.LastName,
+		arg.Email,
+		arg.Password,
+		arg.ID,
+	)
+	return err
 }
