@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -41,7 +41,24 @@ func CreateTODO(cfg *api.ApiConfig) http.Handler {
 
 		taskName := strings.TrimSpace(req.TaskName)
 		if taskName == "" {
-			taskName = "untitled"
+			names, err := cfg.Db.GetDefaultName(ctx, userId)
+			if err != nil {
+				utils.JsonResponseError(w, http.StatusInternalServerError, "Could not fetch tasks")
+				return
+			}
+
+			if len(names) == 0 {
+				taskName = "untitled"
+			} else {
+				num, err := GetTheLastUntitled(names)
+				if err != nil {
+					utils.JsonResponseError(w, http.StatusInternalServerError, "Could not generate task name")
+					return
+				}
+
+				taskName = "untitled " + strconv.Itoa(num)
+			}
+
 		}
 
 		if strings.TrimSpace(req.TaskDesc) == "" {
@@ -69,23 +86,6 @@ func CreateTODO(cfg *api.ApiConfig) http.Handler {
 
 		utils.JsonResponse(w, http.StatusCreated, "Task was created successfully", taskToResponse(task))
 	})
-}
-
-func taskToResponse(task database.Task) TaskResponse {
-	var deadline *time.Time
-	if task.Deadline.Valid {
-		deadline = &task.Deadline.Time
-	}
-
-	return TaskResponse{
-		ID:        task.ID,
-		CreatedAt: task.CreatedAt,
-		UpdatedAt: task.UpdatedAt,
-		TaskName:  task.TaskName,
-		TaskDesc:  task.TaskDesc,
-		Deadline:  deadline,
-		UserID:    task.UserID,
-	}
 }
 
 func GetAllTodo(cfg *api.ApiConfig) http.Handler {
@@ -136,5 +136,11 @@ func GetAllTodo(cfg *api.ApiConfig) http.Handler {
 		}
 
 		utils.JsonResponse(w, http.StatusOK, "The tasks were successfully retrieved", respond)
+	})
+}
+
+func GetTodoByName() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 	})
 }

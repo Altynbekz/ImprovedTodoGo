@@ -13,3 +13,6 @@ returning *;
 
 -- name: GetTaskByUserId :many
 select * from tasks where user_id = $1;
+
+-- name: GetDefaultName :many
+select task_name from tasks where user_id = $1 and task_name like 'untitled%';

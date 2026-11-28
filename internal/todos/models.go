@@ -55,6 +55,17 @@ type UserUpdate interface {
 	UpdateUser(context.Context, database.UpdateUserParams) error
 }
 
+// type TodoGetById interface{
+// 	GetTodoById(context.Context, uuid.UUID)(database.Task)
+// 	GetTodoByName(context.Context, string)(database.Task, error)
+
+// }
+
+type CreateTask interface {
+	GetTaskByName(context.Context, string) (database.Task, error)
+	CreateTask(context.Context, database.CreateTaskParams) (database.Task, error)
+}
+
 type LoginUser struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`

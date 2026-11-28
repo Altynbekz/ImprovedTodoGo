@@ -53,6 +53,33 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 	return i, err
 }
 
+const getDefaultName = `-- name: GetDefaultName :many
+select task_name from tasks where user_id = $1 and task_name like 'untitled%'
+`
+
+func (q *Queries) GetDefaultName(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, getDefaultName, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var task_name string
+		if err := rows.Scan(&task_name); err != nil {
+			return nil, err
+		}
+		items = append(items, task_name)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTaskByUserId = `-- name: GetTaskByUserId :many
 select id, created_at, updated_at, task_name, task_desc, deadline, user_id from tasks where user_id = $1
 `
